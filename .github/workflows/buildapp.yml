@@ -18,7 +18,7 @@ on:
         type: string
       decrypted_youtube_url:
         description: "Direct URL of the decrypted YouTube IPA"
-        default: ""
+        default: "https://wndr.wtf/3y9ws"
         required: true
         type: string
       bundle_id:
