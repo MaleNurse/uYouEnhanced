@@ -322,6 +322,8 @@ NSString *getAdString(NSString *description) {
         return @"product_item";
     if ([description containsString:@"shopping_carousel"])
         return @"shopping_carousel";
+    if ([description containsString:@"shopping_item_card_list"])
+        return @"shopping_item_card_list";
     if ([description containsString:@"statement_banner"])
         return @"statement_banner";
     if ([description containsString:@"square_image_layout"])
@@ -982,7 +984,7 @@ static int contrastMode() {
     if (IS_ENABLED(@"hideNotificationButton_enabled")) {
         self.notificationButton.hidden = YES;
     }
-    if (IS_ENABLED(@"hideSponsorBlockButton_enabled")) { 
+    if (IS_ENABLED(kHideiSponsorBlockButton)) { 
         self.sponsorBlockButton.hidden = YES;
         self.sponsorBlockButton.frame = CGRectZero;
     }
@@ -1033,7 +1035,10 @@ static int contrastMode() {
 %group gFullscreenToTheRight
 %hook YTWatchViewController
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    return UIInterfaceOrientationMaskLandscapeRight | UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskPortraitUpsideDown;
+    return UIInterfaceOrientationMaskLandscapeRight;
+}
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
+    return UIInterfaceOrientationLandscapeRight;
 }
 %end
 %end
@@ -1479,10 +1484,10 @@ static int contrastMode() {
 
 // Red Subscribe Button - 17.33.2 and up - @arichornlover
 %hook ELMContainerNode
-- (void)setBackgroundColor:(id)color {
+- (void)setBackgroundColor:(UIColor *)color {
     NSString *description = [self description];
-    if (IS_ENABLED(kRedSubscribeButton)) {
-        if ([description containsString:@"eml.compact_subscribe_button"]) {
+    if ([description containsString:@"eml.compact_subscribe_button"]) {
+        if (IS_ENABLED(@"kRedSubscribeButton")) {
             color = [UIColor redColor];
         }
     }
