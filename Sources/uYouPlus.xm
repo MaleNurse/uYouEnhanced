@@ -341,7 +341,7 @@ YTMainAppControlsOverlayView *controlsOverlayView;
 %end
 
 %hook YTDataUtils
-+ (id)spamSignalsDictionary { return @{}; }
++ (id)spamSignalsDictionary { return @{ @"ms": @"" }; }
 + (id)spamSignalsDictionaryWithoutIDFA { return @{}; }
 %end
 
@@ -397,7 +397,7 @@ YTMainAppControlsOverlayView *controlsOverlayView;
 + (id)spamSignalsDictionaryWithoutIDFA { return @{}; }
 %end
 %hook YTDataUtils
-+ (id)spamSignalsDictionary { return @{}; }
++ (id)spamSignalsDictionary { return @{ @"ms": @"" }; }
 + (id)spamSignalsDictionaryWithoutIDFA { return @{}; }
 %end
 %hook YTAdsInnerTubeContextDecorator
@@ -1527,7 +1527,7 @@ static int contrastMode() {
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"hideShortsCells"]) {
         NSString *description = [self description];
         
-        BOOL hasShorts = ([description containsString:@"shorts_shelf"] || [description containsString:@"shorts_video_cell"] || [description containsString:@"6Shorts"]) && ![description containsString:@"history*"];
+        BOOL hasShorts = ([description containsString:@"shorts_shelf"] || [description containsString:@"shorts_video_cell"] || [description containsString:@"shorts_grid_shelf_footer"] || [description containsString:@"youtube_shorts_24"]);
         BOOL hasShortsInHistory = [description containsString:@"compact_video.eml"] && [description containsString:@"youtube_shorts_"];
 
         if (hasShorts || hasShortsInHistory) {
