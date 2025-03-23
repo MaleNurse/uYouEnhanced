@@ -48,8 +48,7 @@
 #import <YouTubeHeader/YTPlayerBarController.h>
 #import <YouTubeHeader/YTPlayerBarRectangleDecorationView.h>
 #import <YouTubeHeader/YTPlayerOverlay.h>
-#import <YouTubeHeader/YTPlayerOverlayProvider.h>
-#import <YouTubeHeader/YTPlayerOverlayManager.h>
+ #import <YouTubeHeader/YTPlayerOverlayProvider.h>
 #import <YouTubeHeader/QTMIcon.h>
 #import <YouTubeHeader/YTReelModel.h>
 #import <YouTubeHeader/YTReelWatchPlaybackOverlayView.h>
@@ -307,11 +306,6 @@ static NSString *const kGoogleSigninFix = @"googleSigninFix_enabled";
 - (void)setDynamicButtons:(NSArray *)buttons;
 - (void)setLeadingPadding:(CGFloat)arg1;
 - (void)settingsAction;
-@end
-
-// YTSpeed
-@interface YTVarispeedSwitchControllerOption : NSObject
-- (id)initWithTitle:(id)title rate:(float)rate;
 @end
 
 @interface MLHAMQueuePlayer : NSObject
