@@ -1,9 +1,10 @@
-#import "uYouPlus.h"
 
-// uYou AdBlock Workaround LITE (This Version will only remove ads from only Videos/Shorts!) - @PoomSmart
+#import "uYouPlus.h"
+#import "UYTLog.h"
+
 %group uYouAdBlockingWorkaroundLite
-%hook YTHotConfig
-- (BOOL)disableAfmaIdfaCollection { return NO; }
+%hook YTGlobalConfig
+- (BOOL)shouldBlockUpgradeDialog { return YES; }
 %end
 %hook YTIPlayerResponse
 %new(@@:)
@@ -15,38 +16,21 @@
     return [NSMutableArray array];
 }
 %end
-
 %hook YTIClientMdxGlobalConfig
 %new(B@:)
 - (BOOL)enableSkippableAd { return YES; }
 %end
-
 %hook YTHotConfig
 - (BOOL)clientInfraClientConfigIosEnableFillingEncodedHacksInnertubeContext { return NO; }
 %end
-
 %hook YTAdShieldUtils
 + (id)spamSignalsDictionary { return @{}; }
 + (id)spamSignalsDictionaryWithoutIDFA { return @{}; }
 %end
-
 %hook YTDataUtils
 + (id)spamSignalsDictionary { return @{ @"ms": @"" }; }
 + (id)spamSignalsDictionaryWithoutIDFA { return @{}; }
 %end
-
-%hook YTAdsInnerTubeContextDecorator
-- (void)decorateContext:(id)context {
-    %orig(nil);
-}
-%end
-
-%hook YTAccountScopedAdsInnerTubeContextDecorator
-- (void)decorateContext:(id)context {
-    %orig(nil);
-}
-%end
-
 %hook YTLocalPlaybackController
 - (id)createAdsPlaybackCoordinator { return nil; }
 %end
@@ -54,22 +38,11 @@
 %hook MDXSession
 - (void)adPlaying:(id)ad {}
 %end
-
-%hook YTReelInfinitePlaybackDataSource
-- (YTReelModel *)makeContentModelForEntry:(id)entry {
-    YTReelModel *model = %orig;
-    if ([model respondsToSelector:@selector(videoType)] && model.videoType == 3)
-        return nil;
-    return model;
-}
-%end
 %end
 
-// uYou AdBlock Workaround (Note: disables uYou's "Remove YouTube Ads" YouTube-X Option) - @PoomSmart, @arichornlover & @Dodieboy
 %group uYouAdBlockingWorkaround
-// Workaround: uYou 3.0.3 Adblock fix
-%hook YTHotConfig
-- (BOOL)disableAfmaIdfaCollection { return NO; }
+%hook YTGlobalConfig
+- (BOOL)shouldBlockUpgradeDialog { return YES; }
 %end
 %hook YTIPlayerResponse
 %new(@@:)
@@ -105,24 +78,39 @@
 %hook MDXSessionImpl
 - (void)adPlaying:(id)ad {}
 %end
+static BOOL isAdsReelContentModel(YTReelContentModel *model) {
+    if ([model respondsToSelector:@selector(videoType)])
+        return ((YTReelModel *)model).videoType == 3;
+    if ([model isKindOfClass:%c(YTReelNonVideoContentModel)])
+        return [[[(YTReelNonVideoContentModel *)model renderer].customData description] containsString:@"YTIReelNonVideoAdsCustomData_reelNonVideoAdsCustomData"];
+    return NO;
+}
 %hook YTReelDataSource
-- (YTReelModel *)makeContentModelForEntry:(id)entry {
-    YTReelModel *model = %orig;
-    if ([model respondsToSelector:@selector(videoType)] && model.videoType == 3)
+- (YTReelContentModel *)makeContentModelForEntry:(id)entry {
+    YTReelContentModel *model = %orig;
+    if (isAdsReelContentModel(model))
+        return nil;
+    return model;
+}
+%end
+%hook YTReelContentModel
++ (YTReelContentModel *)makeContentModelForEntry:(id)entry {
+    YTReelContentModel *model = %orig;
+    if (isAdsReelContentModel(model))
         return nil;
     return model;
 }
 %end
 %hook YTReelInfinitePlaybackDataSource
-- (YTReelModel *)makeContentModelForEntry:(id)entry {
-    YTReelModel *model = %orig;
-    if ([model respondsToSelector:@selector(videoType)] && model.videoType == 3)
+- (YTReelContentModel *)makeContentModelForEntry:(id)entry {
+    YTReelContentModel *model = %orig;
+    if (isAdsReelContentModel(model))
         return nil;
     return model;
 }
-- (void)setReels:(NSMutableOrderedSet <YTReelModel *> *)reels {
-    [reels removeObjectsAtIndexes:[reels indexesOfObjectsPassingTest:^BOOL(YTReelModel *obj, NSUInteger idx, BOOL *stop) {
-        return [obj respondsToSelector:@selector(videoType)] ? obj.videoType == 3 : NO;
+- (void)setReels:(NSMutableOrderedSet <YTReelContentModel *> *)reels {
+    [reels removeObjectsAtIndexes:[reels indexesOfObjectsPassingTest:^BOOL(YTReelContentModel *obj, NSUInteger idx, BOOL *stop) {
+        return isAdsReelContentModel(obj);
     }]];
     %orig;
 }
@@ -150,6 +138,7 @@ static BOOL isProductList(YTICommand *command) {
 }
 %end
 %hook YTMainAppVideoPlayerOverlayViewController
+
 - (void)playerOverlayProvider:(YTPlayerOverlayProvider *)provider didInsertPlayerOverlay:(YTPlayerOverlay *)overlay {
     if ([[overlay overlayIdentifier] isEqualToString:@"player_overlay_product_in_video"]) return;
     %orig;
@@ -185,13 +174,13 @@ NSString *getAdString(NSString *description) {
 }
 static BOOL isAdRenderer(YTIElementRenderer *elementRenderer, int kind) {
     if ([elementRenderer respondsToSelector:@selector(hasCompatibilityOptions)] && elementRenderer.hasCompatibilityOptions && elementRenderer.compatibilityOptions.hasAdLoggingData) {
-        HBLogDebug(@"YTX adLogging %d %@", kind, elementRenderer);
+        UYTDebugInfo(@"YTX adLogging kind=%d renderer=%@", kind, NSStringFromClass([elementRenderer class]));
         return YES;
     }
     NSString *description = [elementRenderer description];
     NSString *adString = getAdString(description);
     if (adString) {
-        HBLogDebug(@"YTX getAdString %d %@ %@", kind, adString, elementRenderer);
+        UYTDebugInfo(@"YTX getAdString kind=%d match=%lu chars renderer=%@", kind, (unsigned long)adString.length, NSStringFromClass([elementRenderer class]));
         return YES;
     }
     return NO;
@@ -226,6 +215,57 @@ static NSMutableArray <YTIItemSectionRenderer *> *filteredArray(NSArray <YTIItem
     [newArray removeObjectsAtIndexes:removeIndexes];
     return newArray;
 }
+
+static BOOL isAdSectionEntry(id entry) {
+    if ([entry isKindOfClass:%c(YTIItemSectionSupportedRenderers)])
+        return isAdRenderer(((YTIItemSectionSupportedRenderers *)entry).elementRenderer, 5);
+    if ([entry isKindOfClass:%c(YTIElementRenderer)])
+        return isAdRenderer(entry, 5);
+    return NO;
+}
+
+static NSArray *filteredSectionEntries(NSArray *entries) {
+    NSIndexSet *adIndexes = [entries indexesOfObjectsPassingTest:^BOOL(id entry, NSUInteger index, BOOL *stop) {
+        return isAdSectionEntry(entry);
+    }];
+    if (!adIndexes.count) return entries;
+    NSMutableArray *filteredEntries = [entries mutableCopy];
+    [filteredEntries removeObjectsAtIndexes:adIndexes];
+    return filteredEntries;
+}
+
+%hook YTArraySectionViewModel
+
+- (id)initWithEntries:(NSArray *)entries {
+    return %orig(filteredSectionEntries(entries));
+}
+
+- (id)initWithTransform:(id)transform entries:(NSArray *)entries {
+    return %orig(transform, filteredSectionEntries(entries));
+}
+
+- (void)insertEntries:(NSArray *)entries atIndex:(NSUInteger)index {
+    NSArray *filteredEntries = filteredSectionEntries(entries);
+    if (filteredEntries.count)
+        %orig(filteredEntries, index);
+}
+
+- (void)replaceEntry:(id)oldEntry withEntry:(id)newEntry {
+    if (isAdSectionEntry(newEntry)) return;
+    %orig;
+}
+%end
+
+// Inline feed ads are inserted through externally managed ad slots after the
+// section renderers have been filtered. Reject these slots before they bind a
+// YTAdVideoElementsCellController to the collection view.
+%hook YTAdElementsCellExternallyManagedSlotAdapterImpl
+
+- (BOOL)isValidSlotType:(int)type {
+    return NO;
+}
+%end
+
 %hook _ASDisplayView
 - (void)didMoveToWindow {
     %orig;
@@ -240,7 +280,9 @@ static NSMutableArray <YTIItemSectionRenderer *> *filteredArray(NSArray <YTIItem
     %orig;
 }
 - (void)addSectionsFromArray:(NSArray <YTIItemSectionRenderer *> *)array {
-    %orig(filteredArray(array));
+    %orig(
+        filteredArray(array)
+    );
 }
 %end
 %end
@@ -253,3 +295,4 @@ static NSMutableArray <YTIItemSectionRenderer *> *filteredArray(NSArray <YTIItem
         %init(uYouAdBlockingWorkaround);
     }
 }
+
